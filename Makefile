@@ -2,22 +2,25 @@
 CXX := g++
 CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -pedantic
 
-# Target executable
-TARGET := cross_core_test
+# Targets
+TARGETS := cross_core_test cross_core_bench
 
-# Source file
-SRC := cross_core_test.cpp
+# Source files
+SRCS := cross_core_test.cpp cross_core_bench.cpp
 
 # Default target
-all: $(TARGET)
+all: $(TARGETS)
 
-# Build target
-$(TARGET): $(SRC)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SRC)
+# Build each target from its corresponding source file
+cross_core_test: cross_core_test.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $<
+
+cross_core_bench: cross_core_bench.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $<
 
 # Clean target
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGETS)
 
 # Phony targets
 .PHONY: all clean
