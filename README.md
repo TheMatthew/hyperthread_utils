@@ -42,6 +42,12 @@ Compile
 g++ cross_core_test.cpp -o cross_core_test
 ```
 
+or
+
+```
+make
+```
+
 Run
 
 ```
