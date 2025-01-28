@@ -50,9 +50,15 @@ make
 
 Run
 
+For latency
 ```
 ./cross_core_test
 ```
+For Bandwidth
+```
+./cross_core_bench
+```
+
 
 results
 
@@ -78,3 +84,8 @@ CPU	0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15
 15	297.165	282.29	297.686	301.04	89.494	63.266	82.127	73.273	297.067	297.738	292.76	295.256	93.479	65.896	82.324	0
 ```
 
+To convert CSVs to a heatmap, call the `heatmapify.py` program as follows
+
+```
+python3 heatmapify.py input.csv output.png
+```
