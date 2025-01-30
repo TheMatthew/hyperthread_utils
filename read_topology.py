@@ -1,7 +1,10 @@
 import os
 import csv
+import platform
+import subprocess
 
-def read_cpu_topology():
+
+def read_cpu_topology_linux_windows():
     base_path = "/sys/devices/system/cpu"
     cpu_info = []
 
@@ -32,6 +35,40 @@ def read_cpu_topology():
     return cpu_info
 
 
+def read_cpu_topology_macos():
+    cpu_info = []
+
+    try:
+        total_cpus = int(subprocess.check_output(["sysctl", "-n", "hw.ncpu"]).decode().strip())
+        physical_cores = int(subprocess.check_output(["sysctl", "-n", "hw.physicalcpu"]).decode().strip())
+        packages = int(subprocess.check_output(["sysctl", "-n", "hw.packages"]).decode().strip())
+        cores_per_package = physical_cores // packages if packages > 0 else physical_cores
+
+        for cpu in range(total_cpus):
+            physical_core = cpu % physical_cores
+            package_id = physical_core // cores_per_package
+
+            cpu_info.append({
+                "cpu": f"cpu{cpu}",
+                "core_id": str(physical_core),
+                "physical_package_id": str(package_id)
+            })
+
+    except (subprocess.CalledProcessError, ValueError) as e:
+        print(f"Error reading CPU topology: {e}")
+        return []
+
+    return cpu_info
+
+
+def read_cpu_topology():
+    system = platform.system().lower()
+    if system == "darwin":
+        return read_cpu_topology_macos()
+    else:
+        return read_cpu_topology_linux_windows()
+
+
 def save_to_csv(cpu_info, output_file="cpu_topology.csv"):
     with open(output_file, mode="w", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=["cpu", "core_id", "physical_package_id"])
@@ -49,7 +86,7 @@ def main():
     # Print topology info
     print(f"{'CPU':<10} {'Core ID':<10} {'Physical Package ID':<20}")
     print("-" * 40)
-    cpu_info = [k for k in sorted(cpu_info, key=lambda item: item['core_id'])]
+    cpu_info = sorted(cpu_info, key=lambda item: int(item['core_id']))
     for entry in cpu_info:
         print(f"{entry['cpu']:<10} {entry['core_id']:<10} {entry['physical_package_id']:<20}")
 

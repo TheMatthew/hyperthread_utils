@@ -7,16 +7,25 @@
 #include <atomic>
 #ifdef _WIN32
 #include <windows.h>
+#elif __APPLE__
+#include <mach/thread_policy.h>
+#include <mach/thread_act.h>
+#include <pthread.h>
 #else
 #include <pthread.h>
 #include <sched.h>
 #endif
 
 // Set CPU affinity for the current thread
-void setThreadAffinity(int cpu) {
+void setThreadAffinity(int cpu)
+{
 #ifdef _WIN32
     DWORD_PTR mask = (1ULL << cpu);
     SetThreadAffinityMask(GetCurrentThread(), mask);
+#elif __APPLE__
+    thread_port_t thread = pthread_mach_thread_np(pthread_self());
+    thread_affinity_policy_data_t policy = {cpu};
+    thread_policy_set(thread, THREAD_AFFINITY_POLICY, (thread_policy_t)&policy, 1);
 #else
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
@@ -26,15 +35,18 @@ void setThreadAffinity(int cpu) {
 }
 
 // Perform a heavy arithmetic workload
-void arithmeticBenchmark(std::atomic<bool>& ready, std::atomic<bool>& stop, int cpu, long long& result) {
+void arithmeticBenchmark(std::atomic<bool> &ready, std::atomic<bool> &stop, int cpu, long long &result)
+{
     setThreadAffinity(cpu);
     long long sum = 0;
     while (!ready.load())
         ; // Wait for the start signal
 
-    while (!stop.load()) {
-        for (int i = 0; i < 1000; ++i) {
-            sum += i * 2;  // Multiplication and addition
+    while (!stop.load())
+    {
+        for (int i = 0; i < 1000; ++i)
+        {
+            sum += i * 2; // Multiplication and addition
         }
     }
 
@@ -42,14 +54,15 @@ void arithmeticBenchmark(std::atomic<bool>& ready, std::atomic<bool>& stop, int 
 }
 
 // Measure the bandwidth of running arithmetic operations on two cores simultaneously
-double measureBandwidth(int cpu1, int cpu2) {
+double measureBandwidth(int cpu1, int cpu2)
+{
     std::atomic<bool> ready(false);
     std::atomic<bool> stop(false);
     long long result1 = 0, result2 = 0;
 
     // Launch two threads, one on each CPU
-    std::thread t1(arithmeticBenchmark, std::ref(ready), std::ref(stop), cpu1, std::ref(result1));
-    std::thread t2(arithmeticBenchmark, std::ref(ready), std::ref(stop), cpu2, std::ref(result2));
+    std::thread t1([&]() { arithmeticBenchmark(ready, stop, cpu1, result1); });
+    std::thread t2([&]() { arithmeticBenchmark(ready, stop, cpu2, result2); });
 
     // Synchronize threads
     ready.store(true);
@@ -69,31 +82,39 @@ double measureBandwidth(int cpu1, int cpu2) {
     return (result1 + result2) / elapsed / 1e6; // Bandwidth in MegaOps/second
 }
 
-int main() {
+int main()
+{
     const int num_cpus = std::thread::hardware_concurrency();
     std::cout << "Number of CPUs: " << num_cpus << std::endl;
 
     // Open CSV file for writing
     std::ofstream csvFile("core_bandwidth.csv");
-    if (!csvFile.is_open()) {
+    if (!csvFile.is_open())
+    {
         std::cerr << "Failed to open CSV file for writing!" << std::endl;
         return 1;
     }
 
     // Write CSV headers
     csvFile << "CPU";
-    for (int cpu2 = 0; cpu2 < num_cpus; ++cpu2) {
+    for (int cpu2 = 0; cpu2 < num_cpus; ++cpu2)
+    {
         csvFile << "," << cpu2;
     }
     csvFile << "\n";
 
     // Measure bandwidths and write to CSV
-    for (int cpu1 = 0; cpu1 < num_cpus; ++cpu1) {
+    for (int cpu1 = 0; cpu1 < num_cpus; ++cpu1)
+    {
         csvFile << cpu1; // Row label
-        for (int cpu2 = 0; cpu2 < num_cpus; ++cpu2) {
-            if (cpu1 == cpu2) {
+        for (int cpu2 = 0; cpu2 < num_cpus; ++cpu2)
+        {
+            if (cpu1 == cpu2)
+            {
                 csvFile << ",0"; // Bandwidth to itself is meaningless
-            } else {
+            }
+            else
+            {
                 double bandwidth = measureBandwidth(cpu1, cpu2);
                 csvFile << "," << std::fixed << std::setprecision(2) << bandwidth;
             }
@@ -106,4 +127,3 @@ int main() {
 
     return 0;
 }
-

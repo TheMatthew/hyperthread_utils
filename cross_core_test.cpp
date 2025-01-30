@@ -7,6 +7,10 @@
 #include <atomic>
 #ifdef _WIN32
 #include <windows.h>
+#elif __APPLE__
+#include <mach/thread_policy.h>
+#include <mach/thread_act.h>
+#include <pthread.h>
 #else
 #include <pthread.h>
 #include <sched.h>
@@ -17,6 +21,10 @@ void setThreadAffinity(int cpu) {
 #ifdef _WIN32
     DWORD_PTR mask = (1ULL << cpu);
     SetThreadAffinityMask(GetCurrentThread(), mask);
+#elif __APPLE__
+    thread_port_t thread = pthread_mach_thread_np(pthread_self());
+    thread_affinity_policy_data_t policy = { cpu };
+    thread_policy_set(thread, THREAD_AFFINITY_POLICY, (thread_policy_t)&policy, 1);
 #else
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
@@ -28,9 +36,11 @@ void setThreadAffinity(int cpu) {
 // Measure communication latency between two threads
 double measureLatency(int cpu1, int cpu2) {
     if (cpu1 == cpu2)
-	return 0.0;
+        return 0.0;
+
     std::atomic<bool> ready(false);
     std::atomic<bool> signal(false);
+
     // Worker thread
     auto worker = [&](int cpu) {
         setThreadAffinity(cpu);
@@ -86,7 +96,7 @@ int main() {
         csvFile << cpu1; // Row label
         for (int cpu2 = 0; cpu2 < num_cpus; ++cpu2) {
             double latency = measureLatency(cpu1, cpu2);
-            csvFile << "," << std::fixed << std::setprecision(3) << latency*1e9;
+            csvFile << "," << std::fixed << std::setprecision(3) << latency * 1e9;
         }
         csvFile << "\n";
     }
@@ -96,4 +106,3 @@ int main() {
 
     return 0;
 }
-
