@@ -40,14 +40,14 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           mkdir package
-          cp my_executable.exe package/
+          cp cross_core_*.* package/
           tar -czvf windows-build.tar.gz package
 
       - name: Package Artifacts (Linux/macOS)
         if: matrix.os != 'windows-latest'
         run: |
           mkdir package
-          cp my_executable package/
+          cp cross_core_* package/
           tar -czvf ${{ runner.os }}-build.tar.gz package
 
       - name: Upload Artifact
