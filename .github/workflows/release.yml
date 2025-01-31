@@ -58,7 +58,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-build
-          path: ${{ runner.os }}-build.tar.gz
+          path: ${{ runner.os }}-build.zip
 
   release:
     needs: build
