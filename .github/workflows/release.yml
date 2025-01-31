@@ -1,0 +1,72 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"  # Run only on versioned tags like v1.0.0
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: sudo apt update && sudo apt install -y build-essential || brew install make
+
+      - name: Install Dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: make mingw-w64-x86_64-gcc
+
+      - name: Build (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: make
+
+      - name: Build (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: make
+
+      - name: Package Artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          mkdir package
+          cp my_executable.exe package/
+          tar -czvf windows-build.tar.gz package
+
+      - name: Package Artifacts (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          mkdir package
+          cp my_executable package/
+          tar -czvf ${{ runner.os }}-build.tar.gz package
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }}-build
+          path: ${{ runner.os }}-build.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+
