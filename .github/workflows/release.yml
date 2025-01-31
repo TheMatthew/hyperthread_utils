@@ -40,15 +40,19 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           mkdir package
-          cp cross_core_*.* package/
-          tar -czvf windows-build.tar.gz package
+          cp cross_core_*.exe package/
+          cp *.py package/
+          cp requirements.txt package/
+          zip -r windows-build.zip package
 
       - name: Package Artifacts (Linux/macOS)
         if: matrix.os != 'windows-latest'
         run: |
           mkdir package
           cp cross_core_* package/
-          tar -czvf ${{ runner.os }}-build.tar.gz package
+          cp *.py package/
+          cp requirements.txt package/
+          zip -r ${{ runner.os }}-build.zip package
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
