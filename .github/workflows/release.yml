@@ -43,7 +43,7 @@ jobs:
           cp cross_core_*.exe package/
           cp *.py package/
           cp requirements.txt package/
-          zip -r windows-build.zip package
+          powershell Compress-Archive -Path package/* -DestinationPath windows-build.zip
 
       - name: Package Artifacts (Linux/macOS)
         if: matrix.os != 'windows-latest'
